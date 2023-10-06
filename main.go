@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -22,37 +22,24 @@ const (
 )
 
 type Post struct {
-	Id        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Id        primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Title     string             `json:"title"`
+	Content   string             `json:"content"`
+	Author    string             `json:"author"`
+	Status    string             `json:"status"`
+	CreatedAt time.Time          `json:"createdAt,omitempty" bson:"createdAt,omitempty"`
+	UpdatedAt time.Time          `json:"updatedAt"`
 }
 
 var collection *mongo.Collection
-
-func handleByIdRequest(w http.ResponseWriter, r *http.Request) {
-
-	switch r.Method {
-	case GET:
-		getPost(w, r)
-	case PUT:
-		updatePost(w, r)
-	case DELETE:
-		deletePost(w, r)
-	default:
-		http.Error(w, "Method not Implemented", http.StatusNotImplemented)
-		return
-
-	}
-
-}
+var client *mongo.Client
 
 //Execution starts
 func main() {
 
 	dbClientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(context.Background(), dbClientOptions)
+	var err error
+	client, err = mongo.Connect(context.Background(), dbClientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,7 +48,21 @@ func main() {
 
 	http.HandleFunc("/post", createPost)
 	http.HandleFunc("/posts", getAllPost)
-	http.HandleFunc("/post/{id}", handleByIdRequest)
+	http.HandleFunc("/post/", func(w http.ResponseWriter, r *http.Request) {
+
+		switch r.Method {
+		case GET:
+			getPost(w, r)
+		case PUT:
+			updatePost(w, r)
+		case DELETE:
+			deletePost(w, r)
+		default:
+			http.Error(w, "Method not Implemented", http.StatusNotImplemented)
+			return
+
+		}
+	})
 
 	log.Println("listening to port:8080")
 	http.ListenAndServe(":8080", nil)
@@ -75,36 +76,38 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var blogPost *Post
-	if err := json.NewDecoder(r.Body).Decode(blogPost); err != nil {
+	var blogPost Post
+	if err := json.NewDecoder(r.Body).Decode(&blogPost); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	blogPost.Id = uuid.New().String()
+
 	time := time.Now()
 	blogPost.CreatedAt = time
 	blogPost.UpdatedAt = time
 
-	_, err := collection.InsertOne(context.TODO(), blogPost)
+	res, err := collection.InsertOne(context.TODO(), blogPost)
 	if err != nil {
-
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	blogPost.Id = res.InsertedID.(primitive.ObjectID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(blogPost)
 }
 
 //get particular blog post from db
 func getPost(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != GET {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	var blogPost Post
+	id := getIdFromURL(w, r)
+	if id == primitive.NilObjectID {
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-	var blogPost *Post
-	id := getIdFromURL(w, r)
-
-	err := collection.FindOne(context.Background(), bson.M{"id": id}).Decode(&blogPost)
+	err := collection.FindOne(context.Background(), bson.M{"_id": id}).Decode(&blogPost)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -116,31 +119,24 @@ func getPost(w http.ResponseWriter, r *http.Request) {
 //Delete blog post
 func deletePost(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != DELETE {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	id := getIdFromURL(w, r)
+	if id == primitive.NilObjectID {
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-	id := getIdFromURL(w, r)
-
-	_, err := collection.DeleteOne(context.TODO(), bson.M{"id": id})
+	_, err := collection.DeleteOne(context.TODO(), bson.M{"_id": id})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Update blog post
 func updatePost(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != PUT {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var blogPost Post
 	if err := json.NewDecoder(r.Body).Decode(&blogPost); err != nil {
@@ -148,19 +144,34 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blogPost.UpdatedAt = time.Now()
 	id := getIdFromURL(w, r)
-	updateData := bson.M{"$set": blogPost}
+	if id == primitive.NilObjectID {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
 
-	_, err := collection.UpdateOne(context.TODO(), bson.M{"id": id}, updateData)
+	blogPost.UpdatedAt = time.Now()
+	updateData := bson.M{"$set": blogPost}
+	res, err := collection.UpdateOne(context.TODO(), bson.M{"_id": id}, updateData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	blogPost.Id = id
+	if res.MatchedCount == 0 {
+		blogPost.CreatedAt = time.Now()
+		_, err := collection.InsertOne(context.TODO(), blogPost)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
+	json.NewEncoder(w).Encode(blogPost)
 }
 
 //Get all blog posts from db
@@ -172,11 +183,12 @@ func getAllPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	cur, err := collection.Find(context.Background(), nil)
+	cur, err := collection.Find(context.Background(), bson.M{})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	var blogPosts []Post
 	for cur.Next(ctx) {
 		var blogPost Post
@@ -192,16 +204,16 @@ func getAllPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(blogPosts)
 }
 
 // get id from URL path
-func getIdFromURL(w http.ResponseWriter, r *http.Request) string {
+func getIdFromURL(w http.ResponseWriter, r *http.Request) primitive.ObjectID {
 	path := r.URL.Path
 	seg := strings.Split(path, "/")
-	if len(seg) < 2 {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return ""
+	if len(seg) != 3 {
+		return primitive.NilObjectID
 	}
-	id := seg[1]
+	id, _ := primitive.ObjectIDFromHex(seg[2])
 	return id
 }
