@@ -1,0 +1,189 @@
+{
+	"info": {
+		"_postman_id": "b493c4ba-fd19-4bd3-83ec-10e2fee51216",
+		"name": "Assignment",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "15713066"
+	},
+	"item": [
+		{
+			"name": "Post blog post",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Title\": \"optomixzation\",\r\n    \"Content\": \"Cpu optimization\",\r\n    \"Author\": \"Alex\",\r\n    \"Status\": \"Draft\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/post",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"post"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Blog Post",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/post/:id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"post",
+						":id"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": "",
+							"disabled": true
+						}
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "65205bc002152b35d4a956fa"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Put blog post",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Title\": \"optomization\",\r\n    \"Content\": \"Cpu optimization\",\r\n    \"Author\": \"Alex\",\r\n    \"Status\": \"Draft\"\r\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/post/:id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"post",
+						":id"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": "",
+							"disabled": true
+						}
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "65205bc002152b35d4a956fa"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete blog post",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Title\": \"optomixzation\",\r\n    \"Content\": \"memory optimization\",\r\n    \"Author\": \"Alex\",\r\n    \"Status\": \"Draft\"\r\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/post/:id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"post",
+						":id"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": "",
+							"disabled": true
+						}
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "65204fc7a4b6e6f22388045a"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Post",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/posts",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"posts"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": "",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
